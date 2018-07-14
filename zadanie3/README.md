@@ -1,6 +1,4 @@
-=========
 Zadanie 3
-=========
 
 Zadanie polega na dodaniu nowego wywołania systemowego
 
