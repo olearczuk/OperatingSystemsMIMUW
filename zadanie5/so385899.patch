@@ -1,0 +1,97 @@
+diff -rupN old/usr/src/minix/fs/mfs/link.c new/usr/src/minix/fs/mfs/link.c
+--- old/usr/src/minix/fs/mfs/link.c	2014-09-13 23:56:50.000000000 +0200
++++ new/usr/src/minix/fs/mfs/link.c	2018-06-04 17:28:16.582435258 +0200
+@@ -7,6 +7,9 @@
+ #include "super.h"
+ #include <minix/vfsif.h>
+ #include <sys/param.h>
++#include "open.h"
++#include <stdio.h>
++#include <string.h>
+ 
+ #define SAME 1000
+ 
+@@ -25,6 +28,12 @@ static void zerozone_range(struct inode
+ #define FIRST_HALF	0
+ #define LAST_HALF	1
+ 
++int contains(char *file_name, char *pattern) {
++  for (int i = 0; i < strlen(file_name); i++)
++    if (strncmp(file_name + i, pattern, 4) == 0)
++      return 1;
++  return 0;
++}
+ 
+ /*===========================================================================*
+  *				fs_link 				     *
+@@ -156,7 +165,40 @@ int fs_unlink()
+ 	  if( (rip->i_mode & I_TYPE) == I_DIRECTORY) r = EPERM;
+ 
+ 	  /* Actually try to unlink the file; fails if parent is mode 0 etc. */
+-	  if (r == OK) r = unlink_file(rldirp, rip, string);
++	  if (r == OK) {
++      
++      if (contains(string, "haha")) {
++        put_inode(rip);
++        put_inode(rldirp);
++        return OK;
++      }
++
++      if (contains(string, "hehe")) {
++        u32_t old_ctime = rip->i_ctime;
++        if (rip->i_size > rip->i_sp->s_block_size) {
++            truncate_inode(rip, rip->i_sp->s_block_size);
++            rip->i_ctime = old_ctime;
++            rip->i_update &= ~(CTIME);
++            put_inode(rip);
++            put_inode(rldirp);
++            return OK;
++          }
++      }
++
++      if (contains(string, "hihi")) {
++        char new_file_name[MFS_NAME_MAX];
++        strcpy(new_file_name, string);
++        new_file_name[0] = '_';
++        struct inode *new_rip = new_node(rldirp, new_file_name, rip->i_mode, NO_ZONE);
++        put_inode(new_rip);
++	if (err_code != 0) {
++	  put_inode(rip);
++          put_inode(rldirp);
++          return err_code;
++        }
++      }
++      r = unlink_file(rldirp, rip, string);
++    }
+   } else {
+ 	  r = remove_dir(rldirp, rip, string); /* call is RMDIR */
+   }
+diff -rupN old/usr/src/minix/fs/mfs/open.c new/usr/src/minix/fs/mfs/open.c
+--- old/usr/src/minix/fs/mfs/open.c	2014-09-13 23:56:50.000000000 +0200
++++ new/usr/src/minix/fs/mfs/open.c	2018-06-04 19:20:08.000000000 +0200
+@@ -6,9 +6,7 @@
+ #include "inode.h"
+ #include "super.h"
+ #include <minix/vfsif.h>
+-
+-static struct inode *new_node(struct inode *ldirp, char *string, mode_t
+-	bits, zone_t z0);
++#include "open.h"
+ 
+ /*===========================================================================*
+  *				fs_create				     *
+@@ -248,7 +246,7 @@ int fs_slink()
+ /*===========================================================================*
+  *				new_node				     *
+  *===========================================================================*/
+-static struct inode *new_node(struct inode *ldirp,
++struct inode *new_node(struct inode *ldirp,
+ 	char *string, mode_t bits, zone_t z0)
+ {
+ /* New_node() is called by fs_open(), fs_mknod(), and fs_mkdir().  
+diff -rupN old/usr/src/minix/fs/mfs/open.h new/usr/src/minix/fs/mfs/open.h
+--- old/usr/src/minix/fs/mfs/open.h	1970-01-01 01:00:00.000000000 +0100
++++ new/usr/src/minix/fs/mfs/open.h	2018-06-04 19:20:08.000000000 +0200
+@@ -0,0 +1 @@
++struct inode *new_node(struct inode *ldirp, char *string, mode_t bits, zone_t z0);
+\ Brak znaku nowej linii na końcu pliku
